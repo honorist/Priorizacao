@@ -17,6 +17,8 @@ interface CriterionSeed {
   weight: number
   /** Descrições das opções na ordem A, B, C, D. */
   opts: [string, string, string, string]
+  /** Valores das opções A, B, C, D (default [1,2,5,10]). */
+  values?: number[]
 }
 
 function mkCriterion(tid: string, idx: number, c: CriterionSeed): Criterion {
@@ -29,7 +31,7 @@ function mkCriterion(tid: string, idx: number, c: CriterionSeed): Criterion {
     options: LABELS.map((label, i) => ({
       id: `${cid}-${label}`,
       label,
-      value: VALUES[i],
+      value: (c.values ?? VALUES)[i],
       description: c.opts[i],
     })),
   }
@@ -63,7 +65,7 @@ function makeTheme(
   return { ...theme, bands: suggestBands(theme) }
 }
 
-const THEME_1 = makeTheme("t1", "Aumento de Capacidade", "#2563eb", [
+const THEME_1 = makeTheme("t1", "TEMA 1 - Aumento de Capacidade", "#2563eb", [
   {
     name: "Ganho de capacidade",
     description: "Incremento de capacidade produtiva proporcionado pelo projeto.",
@@ -95,7 +97,7 @@ const THEME_1 = makeTheme("t1", "Aumento de Capacidade", "#2563eb", [
   },
 ])
 
-const THEME_2 = makeTheme("t2", "Melhoria Operacional", "#0891b2", [
+const THEME_2 = makeTheme("t2", "TEMA 2 - Melhoria Operacional", "#0891b2", [
   {
     name: "Redução de custo",
     description: "Economia recorrente em custos operacionais.",
@@ -127,7 +129,7 @@ const THEME_2 = makeTheme("t2", "Melhoria Operacional", "#0891b2", [
   },
 ])
 
-const THEME_3 = makeTheme("t3", "Sustaining / Manutenção", "#ca8a04", [
+const THEME_3 = makeTheme("t3", "TEMA 3 - Sustaining / Manutenção", "#ca8a04", [
   {
     name: "Probabilidade de falha",
     description: "Histórico e tendência de falhas do equipamento.",
@@ -164,7 +166,7 @@ const THEME_3 = makeTheme("t3", "Sustaining / Manutenção", "#ca8a04", [
   },
 ])
 
-const THEME_4 = makeTheme("t4", "Segurança e Meio Ambiente", "#16a34a", [
+const THEME_4 = makeTheme("t4", "TEMA 4 - Segurança e Meio Ambiente", "#16a34a", [
   {
     name: "Gravidade (segurança)",
     description: "Severidade do potencial acidente / dano à saúde.",
@@ -206,7 +208,7 @@ const THEME_4 = makeTheme("t4", "Segurança e Meio Ambiente", "#16a34a", [
   },
 ])
 
-const THEME_5 = makeTheme("t5", "Outros", "#6b7280", [
+const THEME_5 = makeTheme("t5", "TEMA 5 - Outros", "#6b7280", [
   {
     name: "Urgência",
     description: "Prazo para realização do projeto.",
@@ -247,4 +249,4 @@ export function createSeedData(): AppData {
 }
 
 /** Versão do schema de dados — usada para migração/reset do estado persistido. */
-export const DATA_VERSION = 1
+export const DATA_VERSION = 2

@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -21,9 +22,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ProjectDialog } from "./ProjectDialog"
-import { BandBadge, ThemeDot } from "@/components/common/indicators"
-import { classify, scoreProject } from "@/lib/scoring"
-import { fmtCapex, fmtNum, fmtPct } from "@/lib/format"
+import { ThemeDot } from "@/components/common/indicators"
+import { scoreProject } from "@/lib/scoring"
+import { generateSampleProjects } from "@/lib/sample"
+import { fmtCapex, fmtNum } from "@/lib/format"
 import { useAppStore } from "@/store/useAppStore"
 import type { Project } from "@/lib/types"
 
@@ -31,6 +33,7 @@ export function ProjectsView() {
   const themes = useAppStore((s) => s.themes)
   const projects = useAppStore((s) => s.projects)
   const removeProject = useAppStore((s) => s.removeProject)
+  const addProjects = useAppStore((s) => s.addProjects)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
   const [toDelete, setToDelete] = useState<Project | null>(null)
@@ -45,6 +48,10 @@ export function ProjectsView() {
     setEditing(p)
     setDialogOpen(true)
   }
+  function generateSamples() {
+    addProjects(generateSampleProjects(themes, 50))
+    toast.success("50 projetos de exemplo (celulose) criados.")
+  }
 
   return (
     <div className="space-y-4">
@@ -55,9 +62,14 @@ export function ProjectsView() {
             {projects.length} projeto(s) cadastrado(s)
           </p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="size-4" /> Novo projeto
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={generateSamples}>
+            <Sparkles className="size-4" /> Gerar 50 exemplos
+          </Button>
+          <Button onClick={openNew}>
+            <Plus className="size-4" /> Novo projeto
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -74,9 +86,7 @@ export function ProjectsView() {
                   <TableHead>Projeto</TableHead>
                   <TableHead>Tema</TableHead>
                   <TableHead className="text-right">Nota</TableHead>
-                  <TableHead className="text-right">%</TableHead>
-                  <TableHead>Faixa</TableHead>
-                  <TableHead className="text-right">CapEx</TableHead>
+                  <TableHead className="text-right">CapEx (US$)</TableHead>
                   <TableHead className="w-[1%] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -84,14 +94,14 @@ export function ProjectsView() {
                 {projects.map((p) => {
                   const theme = themeById.get(p.themeId)
                   const result = theme ? scoreProject(p, theme) : null
-                  const band =
-                    theme && result ? classify(result.raw, theme.bands) : undefined
                   return (
                     <TableRow key={p.id}>
                       <TableCell>
                         <div className="font-medium">{p.name}</div>
-                        {p.area && (
-                          <div className="text-xs text-muted-foreground">{p.area}</div>
+                        {(p.area || p.plant) && (
+                          <div className="text-xs text-muted-foreground">
+                            {[p.area, p.plant].filter(Boolean).join(" · ")}
+                          </div>
                         )}
                         {result && !result.complete && (
                           <div className="text-xs text-amber-600">
@@ -111,12 +121,6 @@ export function ProjectsView() {
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {result ? fmtNum(result.raw) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {result ? fmtPct(result.pct) : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <BandBadge band={band} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {fmtCapex(p.capex)}

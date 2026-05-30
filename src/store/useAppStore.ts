@@ -11,6 +11,7 @@ import type {
   OptionValue,
   Project,
   Theme,
+  YearPlan,
 } from "@/lib/types"
 
 const now = () => new Date().toISOString()
@@ -55,6 +56,8 @@ export interface AppStore {
   themes: Theme[]
   projects: Project[]
   rankBy: "raw" | "pct"
+  plans: YearPlan[]
+  activePlanId: ID | null
 
   // temas
   addTheme: () => ID
@@ -62,7 +65,7 @@ export interface AppStore {
   removeTheme: (themeId: ID) => void
 
   // critérios
-  addCriterion: (themeId: ID) => void
+  addCriterion: (themeId: ID) => ID
   updateCriterion: (
     themeId: ID,
     criterionId: ID,
@@ -106,12 +109,31 @@ export interface AppStore {
   setScore: (projectId: ID, criterionId: ID, optionId: ID | null) => void
   /** Cria (se id novo) ou substitui (se id existente) um projeto inteiro. */
   upsertProject: (project: Project) => void
+  /** Acrescenta vários projetos de uma vez (ex.: dados de exemplo). */
+  addProjects: (projects: Project[]) => void
   removeProject: (projectId: ID) => void
+
+  // planos anuais (orçamento + carteira aprovada)
+  addPlan: (year?: number, budget?: number) => ID
+  updatePlan: (planId: ID, patch: Partial<Pick<YearPlan, "year" | "budget">>) => void
+  removePlan: (planId: ID) => void
+  setActivePlan: (planId: ID | null) => void
+  toggleSelected: (planId: ID, projectId: ID) => void
+  setSelected: (planId: ID, ids: ID[]) => void
+  clearSelected: (planId: ID) => void
 
   // dados
   importData: (data: AppData) => void
   resetData: () => void
   setRankBy: (by: "raw" | "pct") => void
+}
+
+function mapPlan(
+  plans: YearPlan[],
+  planId: ID,
+  fn: (p: YearPlan) => YearPlan,
+): YearPlan[] {
+  return plans.map((p) => (p.id === planId ? fn(p) : p))
 }
 
 const seed = createSeedData()
@@ -122,6 +144,8 @@ export const useAppStore = create<AppStore>()(
       themes: seed.themes,
       projects: seed.projects,
       rankBy: "pct",
+      plans: [],
+      activePlanId: null,
 
       // ---- temas ----
       addTheme: () => {
@@ -145,13 +169,16 @@ export const useAppStore = create<AppStore>()(
         })),
 
       // ---- critérios ----
-      addCriterion: (themeId) =>
+      addCriterion: (themeId) => {
+        const crit = defaultCriterion()
         set((s) => ({
           themes: mapTheme(s.themes, themeId, (t) => ({
             ...t,
-            criteria: [...t.criteria, defaultCriterion()],
+            criteria: [...t.criteria, crit],
           })),
-        })),
+        }))
+        return crit.id
+      },
       updateCriterion: (themeId, criterionId, patch) =>
         set((s) => ({
           themes: mapTheme(s.themes, themeId, (t) =>
@@ -285,32 +312,118 @@ export const useAppStore = create<AppStore>()(
               : [...s.projects, stamped],
           }
         }),
+      addProjects: (projects) =>
+        set((s) => ({ projects: [...s.projects, ...projects] })),
       removeProject: (projectId) =>
-        set((s) => ({ projects: s.projects.filter((p) => p.id !== projectId) })),
+        set((s) => ({
+          projects: s.projects.filter((p) => p.id !== projectId),
+          // remove o projeto de todas as carteiras anuais
+          plans: s.plans.map((pl) => ({
+            ...pl,
+            selectedIds: pl.selectedIds.filter((id) => id !== projectId),
+          })),
+        })),
+
+      // ---- planos anuais ----
+      addPlan: (year, budget) => {
+        const id = uid("plan")
+        const plan: YearPlan = {
+          id,
+          year: year ?? new Date().getFullYear(),
+          budget: budget ?? 0,
+          selectedIds: [],
+        }
+        set((s) => ({ plans: [...s.plans, plan], activePlanId: id }))
+        return id
+      },
+      updatePlan: (planId, patch) =>
+        set((s) => ({
+          plans: mapPlan(s.plans, planId, (p) => ({ ...p, ...patch })),
+        })),
+      removePlan: (planId) =>
+        set((s) => ({
+          plans: s.plans.filter((p) => p.id !== planId),
+          activePlanId:
+            s.activePlanId === planId
+              ? (s.plans.find((p) => p.id !== planId)?.id ?? null)
+              : s.activePlanId,
+        })),
+      setActivePlan: (planId) => set(() => ({ activePlanId: planId })),
+      toggleSelected: (planId, projectId) =>
+        set((s) => ({
+          plans: mapPlan(s.plans, planId, (p) => {
+            const has = p.selectedIds.includes(projectId)
+            return {
+              ...p,
+              selectedIds: has
+                ? p.selectedIds.filter((id) => id !== projectId)
+                : [...p.selectedIds, projectId],
+            }
+          }),
+        })),
+      setSelected: (planId, ids) =>
+        set((s) => ({
+          plans: mapPlan(s.plans, planId, (p) => ({ ...p, selectedIds: [...ids] })),
+        })),
+      clearSelected: (planId) =>
+        set((s) => ({
+          plans: mapPlan(s.plans, planId, (p) => ({ ...p, selectedIds: [] })),
+        })),
 
       // ---- dados ----
       importData: (data) =>
         set(() => ({
           themes: data.themes ?? [],
           projects: data.projects ?? [],
+          plans: data.plans ?? [],
+          activePlanId: data.plans?.[0]?.id ?? null,
         })),
       resetData: () => {
         const fresh = createSeedData()
-        set(() => ({ themes: fresh.themes, projects: fresh.projects }))
+        set(() => ({
+          themes: fresh.themes,
+          projects: fresh.projects,
+          plans: [],
+          activePlanId: null,
+        }))
       },
       setRankBy: (by) => set(() => ({ rankBy: by })),
     }),
     {
       name: "matriz-priorizacao-cmpc",
       version: DATA_VERSION,
-      migrate: () => {
-        const fresh = createSeedData()
-        return { themes: fresh.themes, projects: fresh.projects, rankBy: "pct" }
+      migrate: (persisted) => {
+        const NAMES: Record<string, string> = {
+          t1: "TEMA 1 - Aumento de Capacidade",
+          t2: "TEMA 2 - Melhoria Operacional",
+          t3: "TEMA 3 - Sustaining / Manutenção",
+          t4: "TEMA 4 - Segurança e Meio Ambiente",
+          t5: "TEMA 5 - Outros",
+        }
+        const state = persisted as {
+          themes?: Theme[]
+          projects?: Project[]
+          rankBy?: "raw" | "pct"
+        }
+        if (!state || !Array.isArray(state.themes)) {
+          const fresh = createSeedData()
+          return { themes: fresh.themes, projects: [], rankBy: "pct" }
+        }
+        // Renomeia os 5 temas padrão preservando critérios, edições e projetos.
+        return {
+          themes: state.themes.map((t) =>
+            NAMES[t.id] ? { ...t, name: NAMES[t.id] } : t,
+          ),
+          projects: Array.isArray(state.projects) ? state.projects : [],
+          rankBy: state.rankBy ?? "pct",
+        }
       },
       partialize: (s) => ({
         themes: s.themes,
         projects: s.projects,
         rankBy: s.rankBy,
+        plans: s.plans,
+        activePlanId: s.activePlanId,
       }),
     },
   ),

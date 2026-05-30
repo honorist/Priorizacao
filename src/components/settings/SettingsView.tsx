@@ -28,12 +28,13 @@ import type { AppData } from "@/lib/types"
 export function SettingsView() {
   const themes = useAppStore((s) => s.themes)
   const projects = useAppStore((s) => s.projects)
+  const plans = useAppStore((s) => s.plans)
   const importData = useAppStore((s) => s.importData)
   const resetData = useAppStore((s) => s.resetData)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function handleExport() {
-    const data: AppData = { themes, projects }
+    const data: AppData = { themes, projects, plans }
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     })

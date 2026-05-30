@@ -10,6 +10,15 @@
 
 export type ID = string
 
+/** Documento anexado (guardado como data URL no próprio estado/JSON). */
+export interface Attachment {
+  id: ID
+  name: string
+  type: string
+  size: number
+  dataUrl: string
+}
+
 /** Uma opção discreta de um critério (ex.: A, B, C, D). */
 export interface OptionValue {
   id: ID
@@ -57,25 +66,68 @@ export interface Project {
   name: string
   /** Área solicitante. */
   area?: string
+  /** Planta: G1, G2 ou Áreas Comuns. */
+  plant?: string
   themeId: ID
-  /** CapEx em R$ mil (ou na unidade que o usuário preferir). */
+  /** CapEx em US$. */
   capex?: number
+  /** Quem preencheu a matriz. */
+  filledBy?: string
+  /** Data de preenchimento (ISO yyyy-mm-dd). */
+  date?: string
   /** Mapa criterionId -> optionId escolhido. */
   scores: Record<ID, ID>
+  /** Justificativa da nota, por critério. */
+  justifications?: Record<ID, string>
+  /** Validação / responsável, por critério. */
+  validations?: Record<ID, string>
+  /** Documentos anexados, por critério. */
+  attachments?: Record<ID, Attachment[]>
+  /** Bloco financeiro (US$): Valor Presente Líquido. */
+  vpl?: number
+  /** Bloco financeiro (US$): Valor Presente do Investimento. */
+  vpi?: number
+  /** Payback descontado, em anos. */
+  paybackYears?: number
+  /** Ponderação por partes interessadas — multiplica a nota (1, 1.05, 1.1, 1.2). */
+  ponderacao?: number
+  /** Critério de desempate (análise caso a caso). */
+  tiebreaker?: string
+  /** Compromisso legal — números de referência (Segurança / Meio Ambiente). */
+  tacNo?: string
+  condicionanteNo?: string
+  requisitoLegalNo?: string
+  acaoCivilNo?: string
+  inqueritoCivilNo?: string
   notes?: string
   createdAt: string
   updatedAt: string
+}
+
+/** Plano anual: orçamento de CapEx e a carteira de projetos aprovados no ano. */
+export interface YearPlan {
+  id: ID
+  year: number
+  /** Orçamento de CapEx do ano (US$). */
+  budget: number
+  /** Ids dos projetos selecionados/aprovados para o ano. */
+  selectedIds: ID[]
 }
 
 /** Estado serializável completo (persistido em localStorage / Export JSON). */
 export interface AppData {
   themes: Theme[]
   projects: Project[]
+  plans?: YearPlan[]
 }
 
 /** Resultado calculado da pontuação de um projeto. */
 export interface ScoreResult {
-  /** Nota bruta = Σ(valor × peso). */
+  /** Soma ponderada dos critérios = Σ(valor × peso), antes da ponderação. */
+  base: number
+  /** Multiplicador de ponderação aplicado (1 quando não há). */
+  factor: number
+  /** Nota final = base × factor. */
   raw: number
   /** Nota máxima possível para o tema. */
   max: number

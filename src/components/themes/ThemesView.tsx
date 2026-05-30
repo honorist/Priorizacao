@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -42,12 +42,20 @@ export function ThemesView() {
   const removeTheme = useAppStore((s) => s.removeTheme)
   const addCriterion = useAppStore((s) => s.addCriterion)
   const [activeId, setActiveId] = useState("")
+  const [activeCritId, setActiveCritId] = useState("")
 
   const theme = themes.find((t) => t.id === activeId) ?? themes[0]
 
   useEffect(() => {
     if (theme && theme.id !== activeId) setActiveId(theme.id)
   }, [theme, activeId])
+
+  const activeCrit =
+    theme?.criteria.find((c) => c.id === activeCritId) ?? theme?.criteria[0]
+
+  useEffect(() => {
+    if (activeCrit && activeCrit.id !== activeCritId) setActiveCritId(activeCrit.id)
+  }, [activeCrit, activeCritId])
 
   if (!theme) {
     return (
@@ -66,6 +74,10 @@ export function ThemesView() {
 
   const weightSum = theme.criteria.reduce((a, c) => a + c.weight, 0)
   const weightOff = Math.abs(weightSum - 1) > 0.001
+
+  function addAndSelect() {
+    setActiveCritId(addCriterion(theme.id))
+  }
 
   return (
     <div className="space-y-4">
@@ -157,28 +169,51 @@ export function ThemesView() {
               <span className="text-amber-600">(recomendado somar 1)</span>
             )}
           </CardDescription>
-          <CardAction>
-            <Button onClick={() => addCriterion(theme.id)}>
-              <Plus className="size-4" /> Critério
-            </Button>
-          </CardAction>
         </CardHeader>
         <CardContent className="space-y-3">
           {theme.criteria.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum critério ainda. Clique em <strong>Critério</strong> para
-              adicionar.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Nenhum critério ainda.
+              </p>
+              <Button onClick={addAndSelect}>
+                <Plus className="size-4" /> Critério
+              </Button>
+            </div>
           ) : (
-            theme.criteria.map((c, i) => (
-              <CriterionEditor
-                key={c.id}
-                theme={theme}
-                criterion={c}
-                index={i}
-                count={theme.criteria.length}
-              />
-            ))
+            <>
+              <div className="overflow-x-auto pb-1">
+                <ButtonGroup>
+                  {theme.criteria.map((c, i) => (
+                    <Button
+                      key={c.id}
+                      variant={c.id === activeCrit?.id ? "default" : "outline"}
+                      onClick={() => setActiveCritId(c.id)}
+                      className="whitespace-nowrap"
+                    >
+                      {i + 1}. {c.name}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={addAndSelect}
+                    className="whitespace-nowrap"
+                    aria-label="Adicionar critério"
+                  >
+                    <Plus className="size-4" /> Critério
+                  </Button>
+                </ButtonGroup>
+              </div>
+              {activeCrit && (
+                <CriterionEditor
+                  key={activeCrit.id}
+                  theme={theme}
+                  criterion={activeCrit}
+                  index={theme.criteria.findIndex((c) => c.id === activeCrit.id)}
+                  count={theme.criteria.length}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>

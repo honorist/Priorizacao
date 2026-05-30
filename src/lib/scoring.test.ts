@@ -64,6 +64,15 @@ describe("scoreProject", () => {
     expect(r.answered).toBe(2)
   })
 
+  it("aplica a ponderação (multiplicador) na nota final", () => {
+    const p = { ...makeProject({ c1: "c1-B", c2: "c2-A" }), ponderacao: 1.2 }
+    const r = scoreProject(p, makeTheme())
+    // base = 10*2 = 20 ; raw = 20 * 1.2 = 24
+    expect(r.base).toBe(20)
+    expect(r.factor).toBe(1.2)
+    expect(r.raw).toBeCloseTo(24)
+  })
+
   it("ignora critérios não respondidos e marca como incompleto", () => {
     const r = scoreProject(makeProject({ c1: "c1-A" }), makeTheme())
     // c1: 1*2=2 ; c2 ausente => 2
@@ -147,7 +156,9 @@ describe("seed", () => {
 
   it("tem os 5 temas", () => {
     expect(data.themes).toHaveLength(5)
-    expect(data.themes.map((t) => t.name)).toContain("Aumento de Capacidade")
+    expect(
+      data.themes.some((t) => t.name.includes("Aumento de Capacidade")),
+    ).toBe(true)
     expect(data.projects).toHaveLength(0)
   })
 

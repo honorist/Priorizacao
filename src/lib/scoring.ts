@@ -10,9 +10,10 @@ export function maxScore(theme: Theme): number {
   }, 0)
 }
 
-/** Calcula a nota de um projeto contra os critérios do seu tema. */
+/** Calcula a nota de um projeto contra os critérios do seu tema.
+ *  Aplica a ponderação por partes interessadas (multiplicador) na nota final. */
 export function scoreProject(project: Project, theme: Theme): ScoreResult {
-  let raw = 0
+  let base = 0
   let answered = 0
   const total = theme.criteria.length
 
@@ -20,14 +21,18 @@ export function scoreProject(project: Project, theme: Theme): ScoreResult {
     const selectedId = project.scores[c.id]
     const selected = c.options.find((o) => o.id === selectedId)
     if (selected) {
-      raw += selected.value * c.weight
+      base += selected.value * c.weight
       answered += 1
     }
   }
 
+  const factor = project.ponderacao && project.ponderacao > 0 ? project.ponderacao : 1
+  const raw = base * factor
   const max = maxScore(theme)
   const pct = max > 0 ? (raw / max) * 100 : 0
   return {
+    base,
+    factor,
     raw,
     max,
     pct,
