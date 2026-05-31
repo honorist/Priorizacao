@@ -1,8 +1,26 @@
 import { useState } from "react"
-import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronUp,
+  Filter,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -26,8 +44,11 @@ import { ThemeDot } from "@/components/common/indicators"
 import { scoreProject } from "@/lib/scoring"
 import { generateSampleProjects } from "@/lib/sample"
 import { fmtCapex, fmtNum } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { useAppStore } from "@/store/useAppStore"
 import type { Project } from "@/lib/types"
+
+type SortKey = "name" | "theme" | "nota" | "capex"
 
 export function ProjectsView() {
   const themes = useAppStore((s) => s.themes)
@@ -37,8 +58,75 @@ export function ProjectsView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
   const [toDelete, setToDelete] = useState<Project | null>(null)
+  const [areaFilter, setAreaFilter] = useState<string[]>([])
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
 
   const themeById = new Map(themes.map((t) => [t.id, t]))
+  const areas = [
+    ...new Set(projects.map((p) => p.area).filter((a): a is string => !!a)),
+  ].sort((a, b) => a.localeCompare(b))
+  const filtered =
+    areaFilter.length === 0
+      ? projects
+      : projects.filter((p) => p.area && areaFilter.includes(p.area))
+
+  function toggleArea(a: string, checked: boolean) {
+    setAreaFilter((prev) =>
+      checked ? [...prev, a] : prev.filter((x) => x !== a),
+    )
+  }
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    else {
+      setSortKey(k)
+      setSortDir(k === "nota" || k === "capex" ? "desc" : "asc")
+    }
+  }
+  const sortVal = (p: Project): string | number => {
+    if (sortKey === "name") return p.name.toLowerCase()
+    if (sortKey === "theme")
+      return (themeById.get(p.themeId)?.name ?? "").toLowerCase()
+    if (sortKey === "capex") return p.capex ?? 0
+    const t = themeById.get(p.themeId)
+    return t ? scoreProject(p, t).raw : 0
+  }
+  const sorted = sortKey
+    ? [...filtered].sort((a, b) => {
+        const av = sortVal(a)
+        const bv = sortVal(b)
+        const cmp =
+          typeof av === "string" && typeof bv === "string"
+            ? av.localeCompare(bv)
+            : (av as number) - (bv as number)
+        return sortDir === "asc" ? cmp : -cmp
+      })
+    : filtered
+
+  function sortHead(label: string, k: SortKey, align?: "right") {
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={cn(
+          "inline-flex items-center gap-1 hover:text-foreground",
+          align === "right" && "flex-row-reverse",
+        )}
+      >
+        {label}
+        {sortKey === k ? (
+          sortDir === "asc" ? (
+            <ChevronUp className="size-3.5" />
+          ) : (
+            <ChevronDown className="size-3.5" />
+          )
+        ) : (
+          <ChevronsUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    )
+  }
 
   function openNew() {
     setEditing(null)
@@ -59,7 +147,9 @@ export function ProjectsView() {
         <div>
           <h2 className="text-base font-semibold">Projetos</h2>
           <p className="text-sm text-muted-foreground">
-            {projects.length} projeto(s) cadastrado(s)
+            {areaFilter.length > 0
+              ? `${filtered.length} de ${projects.length} projeto(s)`
+              : `${projects.length} projeto(s) cadastrado(s)`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -72,6 +162,50 @@ export function ProjectsView() {
         </div>
       </div>
 
+      {projects.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="size-4" /> Área
+                {areaFilter.length > 0 ? ` (${areaFilter.length})` : ""}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="max-h-72 w-64 overflow-auto">
+              <DropdownMenuLabel>Filtrar por área</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {areas.length === 0 ? (
+                <DropdownMenuItem disabled>Sem áreas</DropdownMenuItem>
+              ) : (
+                areas.map((a) => (
+                  <DropdownMenuCheckboxItem
+                    key={a}
+                    checked={areaFilter.includes(a)}
+                    onCheckedChange={(c) => toggleArea(a, Boolean(c))}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    {a}
+                  </DropdownMenuCheckboxItem>
+                ))
+              )}
+              {areaFilter.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setAreaFilter([])}>
+                    Limpar filtro
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {areaFilter.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {areaFilter.join(", ")}
+            </span>
+          )}
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {projects.length === 0 ? (
@@ -83,15 +217,19 @@ export function ProjectsView() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Projeto</TableHead>
-                  <TableHead>Tema</TableHead>
-                  <TableHead className="text-right">Nota</TableHead>
-                  <TableHead className="text-right">CapEx (US$)</TableHead>
+                  <TableHead>{sortHead("Projeto", "name")}</TableHead>
+                  <TableHead>{sortHead("Tema", "theme")}</TableHead>
+                  <TableHead className="text-right">
+                    {sortHead("Nota", "nota", "right")}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {sortHead("CapEx (US$)", "capex", "right")}
+                  </TableHead>
                   <TableHead className="w-[1%] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projects.map((p) => {
+                {sorted.map((p) => {
                   const theme = themeById.get(p.themeId)
                   const result = theme ? scoreProject(p, theme) : null
                   return (

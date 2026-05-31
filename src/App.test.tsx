@@ -7,7 +7,6 @@ import { ProjectsView } from "@/components/projects/ProjectsView"
 import { ThemesView } from "@/components/themes/ThemesView"
 import { SettingsView } from "@/components/settings/SettingsView"
 import { BudgetView } from "@/components/budget/BudgetView"
-import { HistoryView } from "@/components/history/HistoryView"
 
 // jsdom não implementa ResizeObserver / matchMedia (usados por Radix/recharts).
 class ResizeObserverStub {
@@ -54,8 +53,6 @@ describe("App (smoke)", () => {
     expect(() => wrap(<SettingsView />)).not.toThrow()
     cleanup()
     expect(() => wrap(<BudgetView />)).not.toThrow()
-    cleanup()
-    expect(() => wrap(<HistoryView />)).not.toThrow()
   })
 
   it("ThemesView mostra o primeiro tema do seed", () => {

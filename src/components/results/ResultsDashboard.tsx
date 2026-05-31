@@ -34,7 +34,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Check, Plus } from "lucide-react"
+import { Check, Filter, Plus } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ThemeDot } from "@/components/common/indicators"
 import { BudgetBar } from "@/components/budget/BudgetBar"
 import { SankeyChart, type SankeyLink, type SankeyNode } from "./SankeyChart"
@@ -67,6 +76,7 @@ export function ResultsDashboard() {
   const addPlan = useAppStore((s) => s.addPlan)
   const setActivePlan = useAppStore((s) => s.setActivePlan)
   const [themeFilter, setThemeFilter] = useState<string>("all")
+  const [areaFilter, setAreaFilter] = useState<string[]>([])
   const [rankView, setRankView] = useState<"table" | "kanban">("table")
   const [selMode, setSelMode] = useState(false)
 
@@ -76,14 +86,21 @@ export function ResultsDashboard() {
     if (activePlan) toggleSelected(activePlan.id, id)
   }
 
-  const ranked = useMemo(
-    () =>
-      rankProjects(projects, themes, {
-        by: rankBy,
-        themeId: themeFilter === "all" ? undefined : themeFilter,
-      }),
-    [projects, themes, rankBy, themeFilter],
-  )
+  const areas = [
+    ...new Set(projects.map((p) => p.area).filter((a): a is string => !!a)),
+  ].sort((a, b) => a.localeCompare(b))
+  const toggleArea = (a: string, checked: boolean) =>
+    setAreaFilter((prev) => (checked ? [...prev, a] : prev.filter((x) => x !== a)))
+
+  const ranked = useMemo(() => {
+    let r = rankProjects(projects, themes, {
+      by: rankBy,
+      themeId: themeFilter === "all" ? undefined : themeFilter,
+    })
+    if (areaFilter.length)
+      r = r.filter((x) => x.project.area && areaFilter.includes(x.project.area))
+    return r
+  }, [projects, themes, rankBy, themeFilter, areaFilter])
 
   const capexTotal = ranked.reduce((a, r) => a + (r.project.capex ?? 0), 0)
   const completeCount = ranked.filter((r) => r.result.complete).length
@@ -227,6 +244,45 @@ export function ResultsDashboard() {
               <SelectItem value="raw">Nota bruta</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1.5">
+          <span className="text-xs text-muted-foreground">Área</span>
+          <div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Filter className="size-4" /> Área
+                  {areaFilter.length > 0 ? ` (${areaFilter.length})` : ""}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-72 w-64 overflow-auto">
+                <DropdownMenuLabel>Filtrar por área</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {areas.length === 0 ? (
+                  <DropdownMenuItem disabled>Sem áreas</DropdownMenuItem>
+                ) : (
+                  areas.map((a) => (
+                    <DropdownMenuCheckboxItem
+                      key={a}
+                      checked={areaFilter.includes(a)}
+                      onCheckedChange={(c) => toggleArea(a, Boolean(c))}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {a}
+                    </DropdownMenuCheckboxItem>
+                  ))
+                )}
+                {areaFilter.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setAreaFilter([])}>
+                      Limpar filtro
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

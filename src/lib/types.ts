@@ -38,6 +38,12 @@ export interface Criterion {
   /** Peso do critério (multiplica o valor da opção escolhida). */
   weight: number
   options: OptionValue[]
+  /** Subtipo a que pertence (vazio = comum a todos os subtipos do tema). */
+  subtype?: string
+  /** Seção/grupo do critério (ex.: "Probabilidade", "Impacto"). */
+  group?: string
+  /** Se verdadeiro, o valor da opção MULTIPLICA a nota (em vez de somar × peso). */
+  multiplier?: boolean
 }
 
 /** Faixa de classificação por limite mínimo de nota bruta. */
@@ -58,6 +64,10 @@ export interface Theme {
   color: string
   criteria: Criterion[]
   bands: Band[]
+  /** Subtipos do tema (ex.: "Eletro-eletrônico"/"Mecânico"). Vazio = sem subtipos. */
+  subtypes?: string[]
+  /** Se false, o projeto não exibe o bloco financeiro (VPL/VPI/Payback). Default true. */
+  financial?: boolean
 }
 
 /** Um projeto avaliado dentro de um tema. */
@@ -69,6 +79,8 @@ export interface Project {
   /** Planta: G1, G2 ou Áreas Comuns. */
   plant?: string
   themeId: ID
+  /** Subtipo escolhido dentro do tema (quando o tema tem subtipos). */
+  subtype?: string
   /** CapEx em US$. */
   capex?: number
   /** Quem preencheu a matriz. */

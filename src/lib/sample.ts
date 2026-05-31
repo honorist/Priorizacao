@@ -1,5 +1,6 @@
 import { uid } from "./id"
 import { CMPC_AREAS_FLAT } from "./cmpcAreas"
+import { applicableCriteria } from "./scoring"
 import type { Project, Theme } from "./types"
 
 /**
@@ -80,8 +81,10 @@ export function generateSampleProjects(themes: Theme[], count: number): Project[
   const out: Project[] = []
   for (let i = 0; i < count; i++) {
     const theme = pick(themes)
+    const subtype =
+      theme.subtypes && theme.subtypes.length ? pick(theme.subtypes) : undefined
     const scores: Record<string, string> = {}
-    for (const c of theme.criteria) {
+    for (const c of applicableCriteria(theme, subtype)) {
       if (c.options.length) scores[c.id] = pick(c.options).id
     }
     const ts = new Date().toISOString()
@@ -92,6 +95,7 @@ export function generateSampleProjects(themes: Theme[], count: number): Project[
       area: pick(CMPC_AREAS_FLAT),
       plant: pick(["G1", "G2"]),
       themeId: theme.id,
+      subtype,
       capex,
       filledBy: pick(RESPONSAVEIS),
       date: new Date().toISOString().slice(0, 10),

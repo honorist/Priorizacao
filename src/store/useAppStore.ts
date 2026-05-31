@@ -61,15 +61,18 @@ export interface AppStore {
 
   // temas
   addTheme: () => ID
-  updateTheme: (themeId: ID, patch: Partial<Pick<Theme, "name" | "color">>) => void
+  updateTheme: (
+    themeId: ID,
+    patch: Partial<Pick<Theme, "name" | "color" | "subtypes">>,
+  ) => void
   removeTheme: (themeId: ID) => void
 
   // critérios
-  addCriterion: (themeId: ID) => ID
+  addCriterion: (themeId: ID, subtype?: string) => ID
   updateCriterion: (
     themeId: ID,
     criterionId: ID,
-    patch: Partial<Pick<Criterion, "name" | "description" | "weight">>,
+    patch: Partial<Pick<Criterion, "name" | "description" | "weight" | "subtype">>,
   ) => void
   removeCriterion: (themeId: ID, criterionId: ID) => void
   moveCriterion: (themeId: ID, criterionId: ID, dir: -1 | 1) => void
@@ -169,8 +172,8 @@ export const useAppStore = create<AppStore>()(
         })),
 
       // ---- critérios ----
-      addCriterion: (themeId) => {
-        const crit = defaultCriterion()
+      addCriterion: (themeId, subtype) => {
+        const crit = { ...defaultCriterion(), subtype }
         set((s) => ({
           themes: mapTheme(s.themes, themeId, (t) => ({
             ...t,
@@ -404,18 +407,30 @@ export const useAppStore = create<AppStore>()(
           themes?: Theme[]
           projects?: Project[]
           rankBy?: "raw" | "pct"
+          plans?: YearPlan[]
+          activePlanId?: ID | null
         }
+        const fresh = createSeedData()
         if (!state || !Array.isArray(state.themes)) {
-          const fresh = createSeedData()
-          return { themes: fresh.themes, projects: [], rankBy: "pct" }
+          return {
+            themes: fresh.themes,
+            projects: [],
+            rankBy: "pct",
+            plans: [],
+            activePlanId: null,
+          }
         }
-        // Renomeia os 5 temas padrão preservando critérios, edições e projetos.
+        // Renomeia os temas; adota a NOVA estrutura (com subtipos) de TEMA 3 e 4.
+        const freshById = new Map(fresh.themes.map((t) => [t.id, t]))
         return {
-          themes: state.themes.map((t) =>
-            NAMES[t.id] ? { ...t, name: NAMES[t.id] } : t,
-          ),
+          themes: state.themes.map((t) => {
+            if (t.id === "t3" || t.id === "t4") return freshById.get(t.id) ?? t
+            return NAMES[t.id] ? { ...t, name: NAMES[t.id] } : t
+          }),
           projects: Array.isArray(state.projects) ? state.projects : [],
           rankBy: state.rankBy ?? "pct",
+          plans: Array.isArray(state.plans) ? state.plans : [],
+          activePlanId: state.activePlanId ?? null,
         }
       },
       partialize: (s) => ({

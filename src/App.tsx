@@ -1,7 +1,6 @@
 import {
   BarChart3,
   FolderKanban,
-  History,
   Layers,
   Settings2,
   Wallet,
@@ -9,7 +8,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResultsDashboard } from "@/components/results/ResultsDashboard"
 import { BudgetView } from "@/components/budget/BudgetView"
-import { HistoryView } from "@/components/history/HistoryView"
 import { ProjectsView } from "@/components/projects/ProjectsView"
 import { ThemesView } from "@/components/themes/ThemesView"
 import { SettingsView } from "@/components/settings/SettingsView"
@@ -42,9 +40,6 @@ function App() {
             <TabsTrigger value="orcamento">
               <Wallet className="size-4" /> Orçamento
             </TabsTrigger>
-            <TabsTrigger value="historico">
-              <History className="size-4" /> Histórico
-            </TabsTrigger>
             <TabsTrigger value="projetos">
               <FolderKanban className="size-4" /> Projetos
             </TabsTrigger>
@@ -61,9 +56,6 @@ function App() {
           </TabsContent>
           <TabsContent value="orcamento" className="mt-6">
             <BudgetView />
-          </TabsContent>
-          <TabsContent value="historico" className="mt-6">
-            <HistoryView />
           </TabsContent>
           <TabsContent value="projetos" className="mt-6">
             <ProjectsView />

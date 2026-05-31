@@ -2,6 +2,13 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useAppStore } from "@/store/useAppStore"
 import type { Criterion, Theme } from "@/lib/types"
 
@@ -63,6 +70,31 @@ export function CriterionEditor({
               placeholder="O que esse critério avalia"
             />
           </div>
+          {theme.subtypes && theme.subtypes.length > 0 && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs">Subtipo</Label>
+              <Select
+                value={criterion.subtype || "__comum__"}
+                onValueChange={(v) =>
+                  updateCriterion(theme.id, criterion.id, {
+                    subtype: v === "__comum__" ? undefined : v,
+                  })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__comum__">Comum (todos)</SelectItem>
+                  {theme.subtypes.map((st) => (
+                    <SelectItem key={st} value={st}>
+                      {st}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1">
           <Button

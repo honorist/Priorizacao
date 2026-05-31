@@ -24,9 +24,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { MoneyInput } from "@/components/common/MoneyInput"
 import { ScorePanel } from "./ScorePanel"
 import { CMPC_AREA_GROUPS, CMPC_AREAS_FLAT, CMPC_PLANTS } from "@/lib/cmpcAreas"
-import { BandBadge } from "@/components/common/indicators"
 import { uid } from "@/lib/id"
-import { classify, scoreProject } from "@/lib/scoring"
+import { applicableCriteria, scoreProject } from "@/lib/scoring"
 import { fmtNum, fmtPct } from "@/lib/format"
 import { useAppStore } from "@/store/useAppStore"
 import type { Attachment, ID, Project } from "@/lib/types"
@@ -90,7 +89,6 @@ export function ProjectDialog({
 
   const theme = themes.find((t) => t.id === draft.themeId)
   const result = theme ? scoreProject(draft, theme) : null
-  const band = theme && result ? classify(result.raw, theme.bands) : undefined
 
   function setField<K extends keyof Project>(key: K, value: Project[K]) {
     setDraft((d) => ({ ...d, [key]: value }))
@@ -102,6 +100,7 @@ export function ProjectDialog({
     setDraft((d) => ({
       ...d,
       themeId,
+      subtype: undefined,
       scores: {},
       justifications: {},
       validations: {},
@@ -320,12 +319,31 @@ export function ProjectDialog({
                         × {fmtNum(result.factor)}
                       </span>
                     )}
-                    <BandBadge band={band} />
                   </div>
                 )}
               </div>
+              {theme.subtypes && theme.subtypes.length > 0 && (
+                <div className="mb-3 space-y-1.5">
+                  <Label>Característica principal do projeto</Label>
+                  <Select
+                    value={draft.subtype ?? ""}
+                    onValueChange={(v) => setField("subtype", v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione a característica" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {theme.subtypes.map((st) => (
+                        <SelectItem key={st} value={st}>
+                          {st}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <ScorePanel
-                theme={theme}
+                criteria={applicableCriteria(theme, draft.subtype)}
                 scores={draft.scores}
                 justifications={draft.justifications ?? {}}
                 validations={draft.validations ?? {}}
@@ -338,6 +356,7 @@ export function ProjectDialog({
             </div>
           )}
 
+          {theme && theme.financial !== false && (
           <div className="rounded-lg border p-3">
             <h3 className="mb-2 text-sm font-semibold">Bloco financeiro (US$)</h3>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -381,6 +400,7 @@ export function ProjectDialog({
               </p>
             )}
           </div>
+          )}
 
           <div className="rounded-lg border p-3">
             <h3 className="mb-2 text-sm font-semibold">
