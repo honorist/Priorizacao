@@ -4,7 +4,10 @@ import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 
 // https://vite.dev/config/
-export default defineConfig({
+// base "/Priorizacao/" no build → assets corretos no GitHub Pages
+// (project page). Em dev/test fica na raiz "/".
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/Priorizacao/" : "/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -14,4 +17,4 @@ export default defineConfig({
   test: {
     environment: "node",
   },
-})
+}))
