@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react"
 import {
   Check,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronUp,
   CircleCheck,
   CircleX,
   Eraser,
+  Filter,
   Plus,
   Trash2,
   Wand2,
@@ -12,6 +16,15 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -40,6 +53,8 @@ import { rankProjects, type RankedProject } from "@/lib/scoring"
 import { fmtCapex, fmtNum } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useAppStore } from "@/store/useAppStore"
+
+type SortKey = "name" | "theme" | "nota" | "capex"
 
 /** Marca visual de "cabe no saldo" (✓) ou "não cabe" (✗). */
 function FitMark({ ok }: { ok: boolean }) {
@@ -72,8 +87,11 @@ export function BudgetView() {
   const clearSelected = useAppStore((s) => s.clearSelected)
 
   const [themeFilter, setThemeFilter] = useState<string>("all")
+  const [areaFilter, setAreaFilter] = useState<string[]>([])
   const [onlySelected, setOnlySelected] = useState(false)
   const [view, setView] = useState<"lista" | "kanban">("lista")
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
 
   const plan = plans.find((p) => p.id === activePlanId) ?? plans[0]
 
@@ -119,9 +137,66 @@ export function BudgetView() {
     if (pl.year < plan.year) for (const id of pl.selectedIds) doneEarlier.add(id)
   }
   const visible = ranked.filter((r) => !doneEarlier.has(r.project.id))
-  const list = onlySelected
+  const areas = [
+    ...new Set(projects.map((p) => p.area).filter((a): a is string => !!a)),
+  ].sort((a, b) => a.localeCompare(b))
+
+  let list = onlySelected
     ? visible.filter((r) => selectedSet.has(r.project.id))
     : visible
+  if (areaFilter.length)
+    list = list.filter(
+      (r) => r.project.area && areaFilter.includes(r.project.area),
+    )
+  if (sortKey) {
+    const val = (r: RankedProject): string | number => {
+      if (sortKey === "name") return r.project.name.toLowerCase()
+      if (sortKey === "theme") return r.theme.name.toLowerCase()
+      if (sortKey === "capex") return r.project.capex ?? 0
+      return r.result.raw
+    }
+    list = [...list].sort((a, b) => {
+      const av = val(a)
+      const bv = val(b)
+      const c =
+        typeof av === "string" && typeof bv === "string"
+          ? av.localeCompare(bv)
+          : (av as number) - (bv as number)
+      return sortDir === "asc" ? c : -c
+    })
+  }
+  const toggleArea = (a: string, checked: boolean) =>
+    setAreaFilter((prev) => (checked ? [...prev, a] : prev.filter((x) => x !== a)))
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    else {
+      setSortKey(k)
+      setSortDir(k === "nota" || k === "capex" ? "desc" : "asc")
+    }
+  }
+  function sortHead(label: string, k: SortKey, align?: "right") {
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={cn(
+          "inline-flex items-center gap-1 hover:text-foreground",
+          align === "right" && "flex-row-reverse",
+        )}
+      >
+        {label}
+        {sortKey === k ? (
+          sortDir === "asc" ? (
+            <ChevronUp className="size-3.5" />
+          ) : (
+            <ChevronDown className="size-3.5" />
+          )
+        ) : (
+          <ChevronsUpDown className="size-3.5 opacity-40" />
+        )}
+      </button>
+    )
+  }
 
   // colunas do kanban: por tema (ordem oficial), cards por nota (list já ordenada)
   const kanbanCols = themes
@@ -275,6 +350,45 @@ export function BudgetView() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1.5">
+          <span className="text-xs text-muted-foreground">Área</span>
+          <div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Filter className="size-4" /> Área
+                  {areaFilter.length > 0 ? ` (${areaFilter.length})` : ""}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-72 w-64 overflow-auto">
+                <DropdownMenuLabel>Filtrar por área</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {areas.length === 0 ? (
+                  <DropdownMenuItem disabled>Sem áreas</DropdownMenuItem>
+                ) : (
+                  areas.map((a) => (
+                    <DropdownMenuCheckboxItem
+                      key={a}
+                      checked={areaFilter.includes(a)}
+                      onCheckedChange={(c) => toggleArea(a, Boolean(c))}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {a}
+                    </DropdownMenuCheckboxItem>
+                  ))
+                )}
+                {areaFilter.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setAreaFilter([])}>
+                      Limpar filtro
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <ButtonGroup>
             <Button
@@ -313,6 +427,20 @@ export function BudgetView() {
             </div>
           ) : view === "lista" ? (
             <div className="divide-y">
+              <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
+                <span className="w-5 shrink-0" />
+                <span className="w-44 shrink-0">{sortHead("Tema", "theme")}</span>
+                <span className="min-w-0 flex-1">
+                  {sortHead("Projeto", "name")}
+                </span>
+                <span className="flex w-14 justify-end">
+                  {sortHead("Nota", "nota", "right")}
+                </span>
+                <span className="flex w-28 justify-end">
+                  {sortHead("CapEx", "capex", "right")}
+                </span>
+                <span className="w-5 shrink-0" />
+              </div>
               {list.map((r) => {
                 const selected = selectedSet.has(r.project.id)
                 return (
@@ -322,7 +450,7 @@ export function BudgetView() {
                     onClick={() => toggleSelected(plan.id, r.project.id)}
                     aria-pressed={selected}
                     className={cn(
-                      "flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-accent",
+                      "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-accent",
                       selected && "bg-primary/5",
                     )}
                   >
@@ -336,12 +464,13 @@ export function BudgetView() {
                     >
                       {selected && <Check className="size-3.5" />}
                     </span>
+                    <span className="inline-flex w-44 shrink-0 items-center gap-1.5 text-sm">
+                      <ThemeDot color={r.theme.color} />
+                      <span className="truncate">{r.theme.name}</span>
+                    </span>
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <ThemeDot color={r.theme.color} />
-                        <span className="truncate font-medium">
-                          {r.project.name}
-                        </span>
+                      <span className="block truncate font-medium">
+                        {r.project.name}
                       </span>
                       {(r.project.area || r.project.plant) && (
                         <span className="text-xs text-muted-foreground">
