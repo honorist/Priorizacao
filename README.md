@@ -1,24 +1,4 @@
-# Matriz de Priorização de Projetos — CMPC
 
-Aplicação web **totalmente editável** para priorizar projetos de CapEx por
-**critérios ponderados**, organizada em **5 temas ("cestas")**. Inspirada na
-Matriz de Priorização da Usiminas, adaptada à realidade do CMPC.
-
-Cada tema tem o **seu próprio conjunto de critérios**, ajustável de forma única e
-aplicado a todos os projetos daquela cesta. A nota de cada projeto é
-**Σ(valor da opção escolhida × peso do critério)**, e o projeto é classificado em
-faixas (Baixa / Média / Alta) com limites configuráveis.
-
-## Temas padrão
-
-1. Aumento de Capacidade
-2. Melhoria Operacional
-3. Sustaining / Manutenção
-4. Segurança e Meio Ambiente
-5. Outros
-
-Todos os temas, critérios, pesos, opções (A/B/C/D) e faixas podem ser editados no
-próprio app.
 
 ## Stack
 
@@ -70,11 +50,7 @@ src/
 
 ## Notas
 
-- **OneDrive:** este projeto vive sob uma pasta sincronizada pelo OneDrive. O
-  `node_modules/` está no `.gitignore`; se a sincronização ficar pesada,
-  considere excluir a pasta do sync do OneDrive.
-- O motor de pontuação (`src/lib/scoring.ts`) é puro e coberto por testes; a UI
-  recalcula tudo automaticamente ao editar pesos/critérios.
+-
 
 ## Roadmap (próximos ajustes)
 
